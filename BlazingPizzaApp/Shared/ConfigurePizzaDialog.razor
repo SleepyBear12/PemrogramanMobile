@@ -1,0 +1,108 @@
+@inject OrderState OrderState
+@if (_showConfigureDialog)
+{
+    <div class="dialog-container">
+        <div class="dialog">
+            <div class="dialog-title">@Pizza.Special?.Name</div>
+            <div class="dialog-body">
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: bold;">
+                        Diameter: @_currentSize in
+                    </label>
+                    <input type="range" 
+                           min="@Pizza.MinimumSize" 
+                           max="@Pizza.MaximumSize" 
+                           step="1" 
+                           value="@_currentSize"
+                           @oninput="OnSizeInput"
+                           style="width: 100%; cursor: pointer;" />
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; color: #666; margin-top: 4px;">
+                        <span>@Pizza.MinimumSize in</span>
+                        <span>@Pizza.MaximumSize in</span>
+                    </div>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px;">Price</label>
+                    <div style="font-size: 24px; font-weight: bold; color: #e74c3c;">
+                        @_currentPrice.ToString("0.00")
+                    </div>
+                </div>
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="error-message">@_errorMessage</div>
+                }
+            </div>
+            <div class="dialog-buttons" style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="button" class="btn btn-secondary" @onclick="CancelDialog">
+                    Cancel
+                </button>
+                <button type="button" class="btn btn-primary" @onclick="AddToOrder">
+                    Add to order
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _showConfigureDialog;
+    private string? _errorMessage;
+    private int _currentSize = 12;
+    private decimal _currentPrice;
+
+    private Pizza Pizza { get; set; } = new Pizza();
+
+    public void Show(PizzaSpecial special)
+    {
+        Pizza = new Pizza
+        {
+            Special = special,
+            SpecialId = special.Id,
+            Size = 12
+        };
+        _currentSize = 12;
+        _currentPrice = Pizza.GetTotalPrice();
+        _errorMessage = null;
+        _showConfigureDialog = true;
+        StateHasChanged();
+    }
+
+    private async Task OnSizeInput(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var size))
+        {
+            _currentSize = Math.Clamp(size, Pizza.MinimumSize, Pizza.MaximumSize);
+            Pizza.Size = _currentSize;
+            _currentPrice = Pizza.GetTotalPrice();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task AddToOrder()
+    {
+        if (Pizza.Special is null)
+        {
+            _errorMessage = "Select a pizza before adding it to the cart.";
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        OrderState.AddPizzaToCart(new SavedOrderPizza
+        {
+            SpecialId = Pizza.SpecialId,
+            PizzaName = Pizza.SpecialName,
+            Size = _currentSize,
+            Price = _currentPrice
+        });
+
+        _showConfigureDialog = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CancelDialog()
+    {
+        _showConfigureDialog = false;
+        _errorMessage = null;
+        await InvokeAsync(StateHasChanged);
+    }
+}

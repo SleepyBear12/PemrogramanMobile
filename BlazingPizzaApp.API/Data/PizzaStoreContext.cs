@@ -11,5 +11,9 @@ namespace BlazingPizzaApp.API.Data
         }
 
         public DbSet<PizzaSpecial> PizzaSpecials { get; set; }
+
+        public DbSet<Order> Orders { get; set; }
+
+        public DbSet<OrderPizza> OrderPizzas { get; set; }
     }
 }

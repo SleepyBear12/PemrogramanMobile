@@ -756,3 +756,40 @@ input[type=range] {
         transform: translateX(500px);
     }
 }
+
+.error-message {
+    color: #ff8080;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+
+.order-card {
+    background-color: #333333;
+    color: white;
+    border-radius: 6px;
+    padding: 1rem 1.2rem;
+    margin-top: 1rem;
+    max-width: 36rem;
+}
+
+    .order-card .order-header {
+        display: flex;
+        justify-content: space-between;
+        font-weight: 700;
+        color: #fff2cc;
+        margin-bottom: 0.6rem;
+    }
+
+    .order-card .order-line {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.2rem 0;
+        font-weight: 100;
+    }
+
+    .order-card .order-line.total {
+        border-top: 1px solid #555;
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        font-weight: 700;
+    }

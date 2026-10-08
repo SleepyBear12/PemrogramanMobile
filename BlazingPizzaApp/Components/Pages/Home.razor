@@ -1,30 +1,131 @@
 ﻿@page "/"
-@using BlazingPizzaApp.Data
-@using BlazingPizzaApp.Model
+@implements IDisposable
+@inject OrderState OrderState
 
-<h1>Blazing Pizzas</h1>
+<div class="main">
+    <h1>Blazing Pizzas</h1>
 
-<ul class="pizza-cards">
-    @foreach (var pizzaSpecial in pizzaSpecials)
+    <ul class="pizza-cards">
+        @foreach (var pizzaSpecial in pizzaSpecials)
+        {
+            <li style="background-image: url('@pizzaSpecial.ImageUrl')" @onclick="@(() => ShowConfigurePizzaDialog(pizzaSpecial))">
+                <div class="pizza-info">
+                    <span class="title">@pizzaSpecial.Name</span>
+                    @pizzaSpecial.Description
+                    <span class="price">@pizzaSpecial.GetFormattedBasePrice()</span>
+                </div>
+            </li>
+        }
+    </ul>
+</div>
+
+<div class="sidebar">
+    <h2>Your cart</h2>
+
+    @if (OrderState.CartPizzas.Any())
     {
-        <li  style="background-image: url('@pizzaSpecial.ImageUrl')">
-            <div class="pizza-info">
-                <span class="title">@pizzaSpecial.Name</span>
-                @pizzaSpecial.Description
-                <span class="price">@pizzaSpecial.GetFormattedBasePrice()</span>
-            </div>
-        </li>
-    }
-</ul>
+        <div class="cart-list">
+            @foreach (var pizza in OrderState.CartPizzas)
+            {
+                <div class="cart-item">
+                    <div class="cart-item-left">
+                        <div class="title">@pizza.PizzaName</div>
+                        <div class="subtitle">@pizza.SizeInches"</div>
+                    </div>
+                    <div class="cart-item-right">
+                        <div class="item-price">@pizza.GetFormattedPrice()</div>
+                        <button class="btn btn-link btn-sm" @onclick="() => RemoveFromCart(pizza)">Remove</button>
+                    </div>
+                </div>
+            }
+        </div>
 
-@code{
+        <div class="order-total">
+            Total:
+            <span class="total-price">@OrderState.GetCartTotal().ToString("0.00")</span>
+        </div>
+
+        <div class="cart-actions">
+            <button class="btn btn-primary" @onclick="SaveCartAsync">Save order</button>
+            <button class="btn btn-secondary" @onclick="ClearCart">Clear</button>
+        </div>
+    }
+    else
+    {
+        <div class="empty-cart">Choose a pizza<br>to get started</div>
+    }
+
+    <hr />
+
+    @if (savedOrders.Any())
+    {
+        <h3>Saved orders</h3>
+        @foreach (var savedOrder in savedOrders)
+        {
+            <div class="saved-order">
+                <div class="saved-order-date">@savedOrder.CreatedAt.ToString("g")</div>
+                @foreach (var pizza in savedOrder.Pizzas)
+                {
+                    <div class="cart-item small">
+                        <div class="title">@pizza.PizzaName (@pizza.SizeInches")</div>
+                        <div class="item-price">@pizza.GetFormattedPrice()</div>
+                    </div>
+                }
+                <div class="saved-order-total">Total: @savedOrder.GetFormattedTotalPrice()</div>
+            </div>
+        }
+    }
+</div>
+
+<ConfigurePizzaDialog @ref="dialog" />
+
+@code {
     private List<PizzaSpecial> pizzaSpecials = new List<PizzaSpecial>();
 
+    private ConfigurePizzaDialog? dialog;
+
+    private List<SavedOrder> savedOrders => OrderState.SavedOrders;
+
     [Inject]
-    private IPizzaSpecials PizzaSpecialsService { get; set; }
+    private IOrderService OrderService { get; set; } = default!;
+
+    [Inject]
+    private IPizzaSpecials PizzaSpecialsService { get; set; } = default!;
+
+    protected override void OnInitialized() => OrderState.OnChange += StateHasChanged;
 
     protected override async Task OnInitializedAsync()
     {
         pizzaSpecials = (await PizzaSpecialsService.GetPizzaSpecialsAsync()).ToList();
     }
+
+    private void ShowConfigurePizzaDialog(PizzaSpecial pizzaSpecial) => dialog?.Show(pizzaSpecial);
+
+    private void RemoveFromCart(SavedOrderPizza pizza)
+    {
+        OrderState.RemovePizzaFromCart(pizza);
+    }
+
+    private async Task SaveCartAsync()
+    {
+        if (!OrderState.CartPizzas.Any()) return;
+
+        try
+        {
+            var saved = await OrderService.SaveOrderAsync(OrderState.CartPizzas);
+            OrderState.AddSavedOrder(saved);
+            OrderState.ClearCart();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving cart: {ex.Message}");
+        }
+    }
+
+    private void ClearCart()
+    {
+        OrderState.ClearCart();
+    }
+
+    public void Dispose() => OrderState.OnChange -= StateHasChanged;
 }

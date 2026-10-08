@@ -1,0 +1,66 @@
+@page "/myorders"
+@inject IOrderService OrderService
+
+<div class="main">
+    <h1>My Orders</h1>
+
+    @if (_loading)
+    {
+        <p>Loading...</p>
+    }
+    else if (!string.IsNullOrEmpty(_error))
+    {
+        <div class="error-message">@_error</div>
+    }
+    else if (!orders.Any())
+    {
+        <p>You have no orders yet. Choose a pizza to get started!</p>
+    }
+    else
+    {
+        @foreach (var order in orders)
+        {
+            <div class="order-card">
+                <div class="order-header">
+                    <span>Order #@order.OrderId</span>
+                    <span>@order.CreatedAt.ToLocalTime().ToString("g")</span>
+                </div>
+
+                @foreach (var pizza in order.Pizzas)
+                {
+                    <div class="order-line">
+                        <span>@pizza.PizzaName (@pizza.SizeInches")</span>
+                        <span>@pizza.GetFormattedPrice()</span>
+                    </div>
+                }
+
+                <div class="order-line total">
+                    <span>Total</span>
+                    <span>@order.GetFormattedTotalPrice()</span>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private List<SavedOrder> orders = new List<SavedOrder>();
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            orders = await OrderService.GetOrdersAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Could not load orders: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}
